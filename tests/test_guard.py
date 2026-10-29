@@ -32,6 +32,11 @@ def unknown(detail: str = "WebUI 不可达") -> "ProbeResult":
     return ProbeResult(LoginState.UNKNOWN, detail)
 
 
+def reconnecting(detail: str = "协议端重连中") -> "ProbeResult":
+    """协议端自报重连中，既不在线也不掉线。"""
+    return ProbeResult(LoginState.RECONNECTING, detail)
+
+
 class FirstPushTest(unittest.TestCase):
     """首次进等扫码只推一次码，别紧接着又续一张。"""
 
@@ -113,6 +118,73 @@ class AbnormalTest(unittest.TestCase):
         guard.feed(need_login(), 0.0)
         self.assertEqual([a.kind for a in guard.feed(unknown(), 1.0)], ["offline"])
         self.assertFalse(guard.should_refresh(2.0))
+
+
+class ReconnectingTest(unittest.TestCase):
+    """重连中是瞬态：宽限期内静默，卡住超时才报一次。"""
+
+    def test_silent_within_grace(self) -> None:
+        guard = Guard(reconnect_grace=300)
+        self.assertEqual(guard.feed(reconnecting(), 0.0), [])
+        self.assertEqual(guard.feed(reconnecting(), 120.0), [])
+        # 抖动不能累积成「连续失败轮数」
+        self.assertEqual(guard.state.streak, 0)
+
+    def test_report_once_after_grace(self) -> None:
+        guard = Guard(reconnect_grace=300)
+        guard.feed(reconnecting(), 1000.0)
+        # 差一秒还在宽限期内，不能提前报
+        self.assertEqual(guard.feed(reconnecting(), 1299.0), [])
+        self.assertEqual([a.kind for a in guard.feed(reconnecting(), 1300.0)], ["offline"])
+        # 同一段重连只报一次
+        self.assertEqual(guard.feed(reconnecting(), 1900.0), [])
+
+    def test_grace_restarts_after_online(self) -> None:
+        """重连断开过再重连要重新计时，不能拿上一段的时间接着算。"""
+        guard = Guard(reconnect_grace=300)
+        guard.feed(reconnecting(), 0.0)
+        guard.feed(online(), 100.0)
+        self.assertEqual(guard.feed(reconnecting(), 120.0), [])
+
+    def test_does_not_touch_refresh_clock(self) -> None:
+        """重连不该把已经排好的续码时间清掉。"""
+        guard = Guard(refresh_seconds=120, reconnect_grace=300)
+        guard.feed(need_login("A"), 0.0)
+        guard.feed(reconnecting(), 30.0)
+        self.assertEqual(guard.state.next_refresh_at, 120.0)
+
+    def test_zero_grace_alerts_immediately(self) -> None:
+        """配置成 0 就退化成「第一次重连就报」。"""
+        guard = Guard(reconnect_grace=0)
+        self.assertEqual([a.kind for a in guard.feed(reconnecting(), 0.0)], ["offline"])
+
+    def test_blip_recover_is_silent(self) -> None:
+        """抖一下又好了、期间没提醒过用户，恢复也别单独报平安。"""
+        guard = Guard(reconnect_grace=300)
+        guard.feed(reconnecting(), 0.0)
+        self.assertEqual(guard.feed(online(), 30.0), [])
+
+    def test_recover_after_grace_alert(self) -> None:
+        guard = Guard(reconnect_grace=300)
+        guard.feed(reconnecting(), 0.0)
+        self.assertEqual([a.kind for a in guard.feed(reconnecting(), 400.0)], ["offline"])
+        self.assertEqual([a.kind for a in guard.feed(online(), 430.0)], ["recover"])
+
+
+class UnreachableRecoverTest(unittest.TestCase):
+    """不可达报过告警之后恢复，也要有收尾。"""
+
+    def test_unknown_then_online_recover(self) -> None:
+        guard = Guard(confirm_rounds=2)
+        guard.feed(unknown(), 0.0)
+        self.assertEqual([a.kind for a in guard.feed(unknown(), 30.0)], ["offline"])
+        self.assertEqual([a.kind for a in guard.feed(online(), 60.0)], ["recover"])
+
+    def test_single_unknown_then_online_silent(self) -> None:
+        """只抖了一轮、没报过告警，恢复也不发。"""
+        guard = Guard(confirm_rounds=2)
+        guard.feed(unknown(), 0.0)
+        self.assertEqual(guard.feed(online(), 30.0), [])
 
 
 class RecoverTest(unittest.TestCase):

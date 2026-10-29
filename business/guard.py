@@ -25,11 +25,14 @@ class Guard:
         refresh_seconds: int = 120,
         backoff_max: int = 900,
         notify_recover: bool = True,
+        reconnect_grace: int = 300,
     ) -> None:
         self.confirm_rounds = max(1, int(confirm_rounds))
         self.refresh_seconds = max(30, int(refresh_seconds))
         self.backoff_max = max(self.refresh_seconds, int(backoff_max))
         self.notify_recover = bool(notify_recover)
+        # 重连多久才值得打扰用户；0 表示第一次看到重连就报
+        self.reconnect_grace = max(0, int(reconnect_grace))
         self.state = GuardState()
 
     def feed(self, result: ProbeResult, now: float) -> list[Action]:
@@ -41,6 +44,8 @@ class Guard:
             return self._on_need_login(result, now)
         if result.state is LoginState.ONLINE:
             return self._on_online()
+        if result.state is LoginState.RECONNECTING:
+            return self._on_reconnecting(now)
         return self._on_bad(result)
 
     def _on_need_login(self, result: ProbeResult, now: float) -> list[Action]:
@@ -64,7 +69,9 @@ class Guard:
 
     def _on_online(self) -> list[Action]:
         """恢复在线，清空去重状态并按开关决定是否报平安。"""
-        was_offline = self.state.state in (LoginState.NEED_LOGIN, LoginState.OFFLINE)
+        # 只有此前真的提过醒（推过码或报过告警）才值得再报一次平安，
+        # 30 秒抖动恢复后单独来一句「已恢复」同样是打扰
+        announced = self.state.state is LoginState.NEED_LOGIN or self.state.notified
         self.state.state = LoginState.ONLINE
         self.state.streak = 0
         self.state.notified = False
@@ -72,9 +79,38 @@ class Guard:
         self.state.backoff = 0
         # 清掉续码时钟，下次掉线重新从第一张码开始算
         self.state.next_refresh_at = 0.0
-        if was_offline and self.notify_recover:
+        # 这段重连结束了，下次重连重新计时
+        self.state.reconnect_since = None
+        self.state.reconnect_notified = False
+        if announced and self.notify_recover:
             return [Action(kind="recover", detail="已恢复登录")]
         return []
+
+    def _on_reconnecting(self, now: float) -> list[Action]:
+        """重连中是瞬态：宽限期内静默，卡住超时才报一次。"""
+        since = self.state.reconnect_since
+        # 上一轮不是重连就从这一刻开始计时，别拿上一段残留的时间接着算
+        if self.state.state is not LoginState.RECONNECTING or since is None:
+            since = now
+            self.state.reconnect_since = now
+            self.state.reconnect_notified = False
+        self.state.state = LoginState.RECONNECTING
+        # 重连不是掉线，清掉误报确认的轮数
+        self.state.streak = 0
+        # 不动 next_refresh_at：重连阶段续码也没有意义，回等扫码后照旧排
+        elapsed = now - since
+        # 宽限期内当抖动，不打扰用户
+        if elapsed < self.reconnect_grace:
+            return []
+        # 同一段重连只报一次，抖动回来再重连才重新武装
+        if self.state.reconnect_notified:
+            return []
+        self.state.reconnect_notified = True
+        # 记成已通知：紧接着转成「不可达」时不会再报一遍同一件事
+        self.state.notified = True
+        # 已经不算等扫码，续码时钟作废
+        self.state.next_refresh_at = 0.0
+        return [Action(kind="offline", detail=f"协议端重连中已持续 {int(elapsed)} 秒")]
 
     def _on_bad(self, result: ProbeResult) -> list[Action]:
         """离线或不可达：连续够轮数、且没通知过才发一次。"""

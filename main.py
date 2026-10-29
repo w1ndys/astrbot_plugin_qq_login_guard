@@ -76,10 +76,17 @@ class QQLoginGuardPlugin(Star):
             receive_id=self.config.get("feishu_receive_id", ""),
         )
         guard = Guard(
-            confirm_rounds=cfg_int(self.config, "unknown_confirm_rounds", 2),
+            # 新键是 offline_confirm_rounds；旧键 unknown_confirm_rounds 仍读一次，再退默认 2 轮
+            confirm_rounds=cfg_int(
+                self.config,
+                "offline_confirm_rounds",
+                cfg_int(self.config, "unknown_confirm_rounds", 2),
+            ),
             refresh_seconds=cfg_int(self.config, "qr_refresh_seconds", 120),
             backoff_max=cfg_int(self.config, "qr_push_backoff_max", 900),
             notify_recover=bool(self.config.get("notify_recover", True)),
+            # 重连中要持续多久才告警，默认 5 分钟，避开 30 秒探测下的瞬态抖动
+            reconnect_grace=cfg_int(self.config, "reconnect_grace_seconds", 300),
         )
         # 二维码图放插件数据目录，重装插件不丢，也不污染源码目录
         data_dir = Path(StarTools.get_data_dir(PLUGIN_NAME))

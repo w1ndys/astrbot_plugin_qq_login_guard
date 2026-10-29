@@ -64,10 +64,17 @@
     "hint": "一直没人扫码时，推送间隔逐次翻倍，封顶到这里",
     "default": 900
   },
-  "unknown_confirm_rounds": {
+  "offline_confirm_rounds": {
     "type": "int",
-    "description": "判定不可达前的连续失败轮数",
+    "description": "判定掉线/不可达前的连续失败轮数",
+    "hint": "旧键 unknown_confirm_rounds 仍会被读取",
     "default": 2
+  },
+  "reconnect_grace_seconds": {
+    "type": "int",
+    "description": "协议端重连持续多少秒才告警一次",
+    "hint": "瞬态重连很常见，宽限期内只记日志；默认 300（5 分钟），填 0 表示第一次重连就报",
+    "default": 300
   },
   "notify_recover": {
     "type": "bool",

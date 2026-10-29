@@ -77,9 +77,9 @@ class NapCatProbe:
         url = str(data.get("qrcodeurl") or "")
         if phase == "waiting_qrcode":
             return ProbeResult(LoginState.NEED_LOGIN, "协议端等待扫码", url)
-        # 重连中既不是在线也不是掉线，不下结论
+        # 重连中是瞬态，单独给一个状态，由状态机的宽限期决定要不要提醒
         if phase == "reconnecting":
-            return ProbeResult(LoginState.UNKNOWN, "协议端重连中")
+            return ProbeResult(LoginState.RECONNECTING, "协议端重连中")
         if data.get("isOffline") is True:
             err = str(data.get("loginError") or "")
             return ProbeResult(LoginState.OFFLINE, "协议端自报离线" + ("：" + err if err else ""))

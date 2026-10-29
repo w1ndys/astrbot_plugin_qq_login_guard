@@ -22,10 +22,10 @@ AstrBot 插件。定时看 NapCat 的 QQ 登录态，掉登录时主动续一张
 
 | CheckLoginStatus | 判定 | 动作 |
 | --- | --- | --- |
-| `isLogin=true` | 在线 | 此前在等扫码/离线则发一次「已恢复」 |
+| `isLogin=true` | 在线 | 此前在等扫码/报过告警则发一次「已恢复」 |
 | `loginPhase=waiting_qrcode` | 等扫码 | 有码推码，没码等下一轮续 |
-| `loginPhase=reconnecting` | 重连中 | 不下结论，不推 |
-| `isOffline=true` | 掉线 | 连续 `unknown_confirm_rounds` 轮后推文字 |
+| `loginPhase=reconnecting` | 重连中 | 宽限期（`reconnect_grace_seconds`）内只记状态不告警；超过才报一次 |
+| `isOffline=true` | 掉线 | 连续 `offline_confirm_rounds` 轮后推文字 |
 | 其它值 | 未知 | 同上按连不上处理 |
 | token 错 / 地址没填 | 配置错 | **只记日志，不告警** |
 
@@ -48,8 +48,9 @@ WebUI 连不上时，若填了 `napcat_onebot_url`，会用 OneBot `get_status` 
 | `qr_timeout` | 15 | 续码请求超时（秒），**不要小于 12**，NapCat 内部最多等 10 秒 |
 | `qr_refresh_seconds` | 120 | 推码后第一次续码的间隔（秒），最小 30 |
 | `qr_push_backoff_max` | 900 | 一直没人扫码时续码间隔的上限（秒） |
-| `unknown_confirm_rounds` | 2 | 判「不可达/掉线」前的连续轮数 |
-| `notify_recover` | true | 恢复登录时发一条 |
+| `offline_confirm_rounds` | 2 | 判「掉线/不可达」前的连续失败轮数（旧键 `unknown_confirm_rounds` 仍兼容） |
+| `reconnect_grace_seconds` | 300 | 重连持续多久才告警一次，填 0 表示第一次重连就报 |
+| `notify_recover` | true | 恢复登录时发一条（抖一下就好的重连不发） |
 | `napcat_onebot_url` | 空 | 可选兜底，如 `http://napcat:3002` |
 | `napcat_onebot_token` | 空 | **密钥**。OneBot HTTP 的 token |
 

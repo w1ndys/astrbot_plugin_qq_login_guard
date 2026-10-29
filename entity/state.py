@@ -12,6 +12,8 @@ class LoginState(str, Enum):
     ONLINE = "online"
     NEED_LOGIN = "need_login"
     OFFLINE = "offline"
+    # 协议端自报重连中：既不是在线也不是掉线，靠宽限期决定要不要提醒
+    RECONNECTING = "reconnecting"
     UNKNOWN = "unknown"
 
 
@@ -36,3 +38,7 @@ class GuardState:
     last_qr_url: str = ""
     next_refresh_at: float = 0.0
     backoff: int = 0
+    # 这一段重连从什么时候开始（秒，用时序单调时钟）；None 表示当前不在重连中
+    reconnect_since: float | None = None
+    # 这一段重连是否已经报过告警，避免超时后每轮都发
+    reconnect_notified: bool = False
