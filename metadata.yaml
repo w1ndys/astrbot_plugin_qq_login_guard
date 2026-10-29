@@ -1,0 +1,13 @@
+name: astrbot_plugin_qq_login_guard
+display_name: QQ 登录守护
+short_desc: QQ 掉登录时自动续二维码并推到飞书，扫码即可重登
+desc: |
+  定时通过 NapCat WebUI 检查 QQ 登录状态；掉登录后主动让协议端重新生成二维码，
+  把二维码图片和说明推送飞书应用机器人（支持私聊），手机直接扫码重登；恢复后再通知一次。
+  WebUI 不可达时可回退到 OneBot get_status 判断在线，避免误报。
+version: 0.1.0
+author: w1ndys
+repo: https://github.com/w1ndys/astrbot_plugin_qq_login_guard
+astrbot_version: ">=4.13"
+support_platforms:
+  - aiocqhttp

@@ -1,0 +1,89 @@
+{
+  "napcat_webui_url": {
+    "type": "string",
+    "description": "NapCat WebUI 地址",
+    "hint": "与 AstrBot 同容器网络时填 http://napcat:6099",
+    "default": "http://napcat:6099"
+  },
+  "napcat_webui_token": {
+    "type": "string",
+    "description": "NapCat WebUI token",
+    "hint": "服务端 services/napcat/config/webui.json 里的 token",
+    "default": "",
+    "secret": true
+  },
+  "feishu_app_id": {
+    "type": "string",
+    "description": "飞书应用 App ID",
+    "default": ""
+  },
+  "feishu_app_secret": {
+    "type": "string",
+    "description": "飞书应用 App Secret",
+    "default": "",
+    "secret": true
+  },
+  "feishu_receive_type": {
+    "type": "string",
+    "description": "接收者 ID 类型",
+    "hint": "私聊填 chat_id（机器人单聊会话）或 email",
+    "options": ["chat_id", "email", "open_id", "user_id"],
+    "labels": ["会话 ID", "邮箱", "open_id", "user_id"],
+    "default": "chat_id"
+  },
+  "feishu_receive_id": {
+    "type": "string",
+    "description": "接收者 ID",
+    "hint": "chat_id 形如 oc_xxx",
+    "default": ""
+  },
+  "probe_interval": {
+    "type": "int",
+    "description": "探测间隔（秒）",
+    "default": 30
+  },
+  "probe_timeout": {
+    "type": "int",
+    "description": "状态探测超时（秒）",
+    "default": 5
+  },
+  "qr_timeout": {
+    "type": "int",
+    "description": "续码请求超时（秒）",
+    "hint": "NapCat 内部最多等 10 秒拿新码，不要小于 12",
+    "default": 15
+  },
+  "qr_refresh_seconds": {
+    "type": "int",
+    "description": "首次续码间隔（秒）",
+    "default": 120
+  },
+  "qr_push_backoff_max": {
+    "type": "int",
+    "description": "续码推送退避上限（秒）",
+    "hint": "一直没人扫码时，推送间隔逐次翻倍，封顶到这里",
+    "default": 900
+  },
+  "unknown_confirm_rounds": {
+    "type": "int",
+    "description": "判定不可达前的连续失败轮数",
+    "default": 2
+  },
+  "notify_recover": {
+    "type": "bool",
+    "description": "恢复登录时通知",
+    "default": true
+  },
+  "napcat_onebot_url": {
+    "type": "string",
+    "description": "OneBot HTTP 地址（可选兜底）",
+    "hint": "例如 http://napcat:3002；留空则只用 WebUI 探测",
+    "default": ""
+  },
+  "napcat_onebot_token": {
+    "type": "string",
+    "description": "OneBot HTTP token（可选）",
+    "default": "",
+    "secret": true
+  }
+}

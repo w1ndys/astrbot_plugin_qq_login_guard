@@ -1,0 +1,8 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.db
+*.db-*
+.DS_Store
+login_qr.png
